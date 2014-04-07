@@ -203,6 +203,14 @@ def _download(url, dest):
         shutil.copy(fout.name, dest)
         os.chmod(dest, 0664)  # Make file readable for apache (mode is 0600 by default)
 
+def _embed(filename, alt=None):
+    if filename.endswith(".webm"):
+        return '<video src="%s" controls></video>' % filename;
+    else:
+        alt_text = 'alt="%s"' % alt if alt else ''
+        return '<img src="%s" %s />' % (filename, alt_text)
+
+
 def _process(thread_id, not_found, output_dir=None):
     """ Given a thread_id, download thread and missing files."""
 
@@ -266,12 +274,12 @@ def _process(thread_id, not_found, output_dir=None):
         logging.info("%s: Saving images file", parsed)
         with open(os.path.join(output_dir, 'images.html'), 'w') as fout:
             for url, outfile in data['images']:
-                print >> fout, "<img src='%s' /><br>" % outfile
+                print >> fout, _embed(outfile), "<br />"
 
         logging.info("%s: Saving thumbs file", parsed)
         with open(os.path.join(output_dir, 'thumbs.html'), 'w') as fout:
             for url, outfile in data['thumbs']:
-                print >> fout, "<img src='%s' />" % outfile
+                print >> fout,  _embed(outfile)
 
         for namespace, downloads in data.items():
             logging.info("%s: Got %s things to download in namespace '%s'", parsed, len(downloads), namespace)
