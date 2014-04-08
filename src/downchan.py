@@ -35,6 +35,7 @@ import shutil
 import collections
 import re
 import datetime
+import sys
 
 MAIN_DIRECTORY = '/home/ignacio/misc/4chan/downchan'
 THREADS_DIRECTORY = os.path.join(MAIN_DIRECTORY, "threads")
@@ -302,6 +303,10 @@ def main():
         os.makedirs(THREADS_DIRECTORY)
 
     options = _parse_args()
+
+    if not (options.thread or options.update):
+        _get_arg_parser().print_help()
+        sys.exit(1)
 
     with NotFound(os.path.join(NOT_FOUND_FILE)) as not_found:
         for thread in options.thread:
