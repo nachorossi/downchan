@@ -71,7 +71,7 @@ def _get_arg_parser():
     parser.add_argument("thread", type=str, nargs='*',
                         help='threads to download')
     parser.add_argument("-u", '--update',
-                        action="store_true", default='false',
+                        action="store_true", default=False,
                         help='update current threads')
     return parser
 
