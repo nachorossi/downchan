@@ -74,6 +74,9 @@ def _get_arg_parser():
     parser.add_argument("-u", '--update',
                         action="store_true", default=False,
                         help='update current threads')
+    parser.add_argument("-l", '--list',
+                        action="store_true", default=False,
+                        help='list current threads')
     return parser
 
 def _parse_args():
@@ -280,7 +283,7 @@ def _process(thread_id, not_found, output_dir=None):
         logging.info("%s: Saving thumbs file", parsed)
         with open(os.path.join(output_dir, 'thumbs.html'), 'w') as fout:
             for url, outfile in data['thumbs']:
-                print >> fout,  _embed(outfile)
+                print >> fout, _embed(outfile)
 
         for namespace, downloads in data.items():
             logging.info("%s: Got %s things to download in namespace '%s'", parsed, len(downloads), namespace)
@@ -295,6 +298,107 @@ def _process(thread_id, not_found, output_dir=None):
                 logging.info("%s: Downloads %s/%s: '%s'", parsed, i + 1, len(to_download), url)
                 _download(url, os.path.join(output_dir, outfile))
 
+class FourChanThread():
+    def __init__(self, thread_id, subdir=None):
+        try:
+            parsed = _parse_thread(thread_id)
+        except:
+            logging.exception("Problems parsing thread '%s'", thread_id)
+            raise ValueError("Invalid threadid : '%s'" % thread_id)
+
+        self.board, self.thread = parsed
+        self.thread_id = "%s.%s" % (self.board, self.thread)
+        self.path = os.path.join(THREADS_DIRECTORY, subdir or self.thread_id)
+        self.url = _thread_url(self.board, self.thread)
+
+        if not os.path.isdir(self.path):
+            logging.info("%s: Making directory '%s'", self.thread_id, self.path)
+            os.makedirs(self.path)
+        thread_file = _thread_file(self.path)
+        if not os.path.isfile(thread_file):
+            logging.info("%s: Writing thread_id file '%s'", self.thread_id, thread_file)
+            with open(thread_file, 'w') as fout:
+                print >> fout, self.thread_id
+
+
+    @classmethod
+    def from_subdir(cls, subdir):
+        path = os.path.join(THREADS_DIRECTORY, subdir)
+        if not os.path.isdir(path):
+            raise ValueError("'%s' is not a valid directory" % (path,))
+        thread_file = _thread_file(path)
+        if not os.path.isfile(thread_file):
+            raise ValueError("'%s' is not a valid file " % (thread_file,))
+        return cls(open(thread_file).read().strip(), subdir=path)
+
+    @classmethod
+    def from_token(cls, token):
+        try:
+            board, thread = _parse_thread(token)
+        except Exception:
+            raise ValueError("Invalid thread token: '%s'" % (token,))
+        thread_id = "%s.%s" % (board, thread)
+        return cls(thread_id)
+
+    def _original_file(self):
+        return os.path.join(self.path, 'original')
+
+    def update_original(self):
+        logging.info("Downloading url '%s'", self.url)
+        response = requests.get(_norm_url(self.url))
+        logging.info("Downloaded")
+
+        if response.status_code == 404:
+            logging.info("%s: '%s' NOT FOUND", self.thread_id, self.url)
+        else:
+            logging.info("%s: thread is alive. Saving original...", self.thread_id)
+            original = response.text
+            with open(self._original_file(), 'w') as fout:
+                fout.write(original.encode('ascii', 'xmlcharrefreplace'))  # Encoding for unicode characters
+        return response.status_code
+
+    def _write_images_file(self, fname, images, line_break=False):
+        with open(fname, 'w') as fout:
+            for src in images:
+                print >> fout, _embed(src),
+                if line_break:
+                    print >> fout, "<br />"
+                else:
+                    print >> fout
+
+
+    def download(self):
+        with open(self._original_file()) as original:
+            soup = BeautifulSoup(original.read())
+
+        data = _extract_downloads(soup)
+
+        logging.info("%s: Saving thread index file", self.thread_id)
+        with open(os.path.join(self.path, str(self.thread)), 'w') as fout:
+            print >> fout, soup.prettify()
+
+        for image_type in ['images', 'thumbs']:
+            logging.info("%s: Saving %s file", self.thread_id, image_type)
+            fname = os.path.join(self.path, '%s.html' % (image_type,))
+            images = [src for url, src in data[image_type]]
+            self._write_images_file(fname, images, line_break=image_type == 'images')
+
+        for namespace, downloads in data.items():
+            logging.info("%s: Got %s things to download in namespace '%s'", self.thread_id, len(downloads), namespace)
+            to_download = []
+            for url, outfile in downloads:
+                fulldest = os.path.join(self.path, outfile)
+                if not os.path.isfile(fulldest):
+                    to_download.append((url, fulldest))
+            logging.info("%s: %s were already downloaded, %s are missing", self.thread_id, len(downloads) - len(to_download), len(to_download))
+
+            for i, (url, outfile) in enumerate(to_download):
+                logging.info("%s: Downloads %s/%s: '%s'", self.thread_id, i + 1, len(to_download), url)
+                _download(url, os.path.join(self.path, outfile))
+
+def _get_all_threads():
+    return [FourChanThread.from_subdir(subdir) for subdir in sorted(os.listdir(THREADS_DIRECTORY))]
+
 def main():
     logging.basicConfig(level=logging.INFO)
     logging.getLogger('requests').setLevel(logging.WARN)  # Kill request info logging
@@ -304,22 +408,36 @@ def main():
 
     options = _parse_args()
 
-    if not (options.thread or options.update):
+    if not (options.thread or options.update or options.list):
         _get_arg_parser().print_help()
         sys.exit(1)
 
-    with NotFound(os.path.join(NOT_FOUND_FILE)) as not_found:
-        for thread in options.thread:
-            logging.info("Downloading thread: '%s'" % thread)
-            _process(thread, not_found)
+    if options.list:
+        logging.info("Current threads:")
+        threads = _get_all_threads()
+        if threads:
+            max_len = max(len(os.path.basename(t.path)) for t in threads)
+            format_str = " - %%%ds - %%s" % (max_len)
+            for thread in threads:
+                logging.info(format_str, os.path.basename(thread.path), thread.url)
+    else:
+        with NotFound(os.path.join(NOT_FOUND_FILE)) as not_found:
+            new_threads = []
+            for token in options.thread:
+                logging.info("Initializing thread: '%s'" % token)
+                thread = FourChanThread(token)
+                new_threads.append(thread)
 
-        if options.update:
-            logging.info("Updating current threads")
-            for subdir in sorted(os.listdir(THREADS_DIRECTORY)):
-                output_dir = os.path.join(THREADS_DIRECTORY, subdir)
-                thread = open(_thread_file(output_dir)).read()
-                logging.info("Updating thread %s@%s", thread, output_dir)
-                _process(thread, not_found, output_dir)
+            threads_to_update = _get_all_threads() if options.update else new_threads
+
+            live_threads = [thread for thread in threads_to_update if not thread.thread_id in not_found]
+
+            logging.info("I have %s/%s threads to update", len(live_threads), len(threads_to_update))
+            for thread in live_threads:
+                if thread.update_original() == 404:
+                    not_found.add(thread.thread_id)
+                thread.download()
+
 
 
 if __name__ == "__main__":
