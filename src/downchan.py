@@ -400,7 +400,7 @@ def _get_all_threads():
     return [FourChanThread.from_subdir(subdir) for subdir in sorted(os.listdir(THREADS_DIRECTORY))]
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     logging.getLogger('requests').setLevel(logging.WARN)  # Kill request info logging
 
     if not os.path.isdir(THREADS_DIRECTORY):
