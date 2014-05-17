@@ -4,7 +4,7 @@ import os
 import re
 from common import THREADS_DIRECTORY, STATIC_DIRECTORY, STATIC_NAMESPACES
 
-RE_BOARD_THREAD_URL = "http://boards.4chan.org/(\w+)/res/(\d+)"
+RE_BOARD_THREAD_URL = r"http://boards.4chan.org/(\w+)/res/(\d+)"
 
 
 class FourChanThread():
