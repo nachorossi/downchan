@@ -2,7 +2,7 @@
 import logging
 import os
 import re
-from common import THREADS_DIRECTORY
+from common import THREADS_DIRECTORY, STATIC_DIRECTORY, STATIC_NAMESPACES
 
 RE_BOARD_THREAD_URL = "http://boards.4chan.org/(\w+)/res/(\d+)"
 
@@ -13,11 +13,8 @@ class FourChanThread():
         self._thread_no = thread_no
         self._thread_id = "%s.%s" % (self._board, self._thread_no)
         self._path = os.path.join(THREADS_DIRECTORY, subdir or self._get_default_dir(slug))
-        self._inited = False
 
     def init(self):
-        if self._inited:
-            return
         if not os.path.isdir(self._path):
             logging.info("%s: Making directory '%s'", self._thread_id, self._path)
             os.makedirs(self._path)
@@ -26,7 +23,15 @@ class FourChanThread():
             logging.info("%s: Writing thread_id file '%s'", self._thread_id, thread_file)
             with open(thread_file, 'w') as fout:
                 print >> fout, self._thread_id
-        self._inited = True
+        for namespace in STATIC_NAMESPACES:
+            static_dir = os.path.join(self._path, namespace)
+            if not os.path.exists(static_dir):
+                source = os.path.join(STATIC_DIRECTORY, namespace)
+                if not os.path.isdir(source):
+                    logging.info("Creating global static directory: '%s'", source)
+                    os.makedirs(source)
+                logging.info("Linking static dir: %s -> %s", source, static_dir)
+                os.symlink(source, static_dir)
 
     @property
     def path(self):
