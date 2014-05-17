@@ -218,7 +218,7 @@ def update_original(thread):
             fout.write(original.encode('ascii', 'xmlcharrefreplace'))  # Encoding for unicode characters
     return response.status_code
 
-def download_thread(thread):
+def update_thread_file(thread):
     label = os.path.basename(thread.path)
     with open(_original_file(thread)) as original:
         soup = BeautifulSoup(original.read())
@@ -228,6 +228,14 @@ def download_thread(thread):
     logging.info("%s: Saving thread index file", label)
     with open(os.path.join(thread.path, str(thread.thread_no)), 'w') as fout:
         print >> fout, soup.prettify()
+
+    return data
+
+
+def download_thread(thread):
+    label = os.path.basename(thread.path)
+
+    data = update_thread_file(thread)
 
     for image_type in ['images', 'thumbs']:
         logging.info("%s: Saving %s file", label, image_type)
