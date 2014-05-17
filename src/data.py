@@ -4,6 +4,7 @@ import os
 
 _LOG = logging.getLogger('downchan.data')
 
+
 def _mkparent_and_open(fname, mode=None):
     dirname = os.path.dirname(fname)
     mode = mode or 'w'
@@ -15,7 +16,9 @@ def _mkparent_and_open(fname, mode=None):
             _LOG.exception("Problems making directory '%s'", dirname)
     return open(fname, mode)
 
+
 class DataStorage():
+
     """
     Class for persisting data in a file.
 
@@ -36,11 +39,13 @@ class DataStorage():
     >>> count_things(data)
     >>> data.save()
 
-    If the file does not exist, the second argument will be assigned as default.
+    If the file does not exist, the second argument will be assigned as
+    default.
 
-    WARNING: data is persisted with the `cPickle` module, so some types cannot be
-    persisted. Refer to the `pickle docs <http://docs.python.org/2/library/pickle.html>`_
-    for further information.
+    WARNING: data is persisted with the `cPickle` module, so some types cannot
+    be persisted. Refer to the
+    `pickle docs <http://docs.python.org/2/library/pickle.html>`_ for further
+    information.
 
     """
 
@@ -74,7 +79,8 @@ class DataStorage():
     def _load(self):
         ''' Load data from file '''
         if not os.path.isfile(self._path):
-            _LOG.info("'%s' is not a valid file. Returning default", self._path)
+            _LOG.info("'%s' is not a valid file. Returning default",
+                      self._path)
             return self._default
 
         try:

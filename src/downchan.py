@@ -1,4 +1,4 @@
-'''
+r'''
 Created on Mar 27, 2014
 
 @author: ignacio
@@ -12,7 +12,7 @@ Example directory structure for thread an.1615086
 threads/an.1615086
 |-thread: This file contains the thread id (an.1615086)
 |         This allows the folder to be renamed to something more human readable
-|         (cute-animals for example) and still knowing where the thread came from
+|         (i.e. cute-animals) and still knowing where the thread came from
 |-original: The original thread as downloaded from 4chan
 |-1615086: The local thread with the links updated to work locally
 |-images.html: A simple html with all the images from the thread
@@ -40,10 +40,14 @@ from chanthread import FourChanThread
 
 NOT_FOUND_FILE = os.path.join(MAIN_DIRECTORY, "404")
 
+
 class NotFound(DataStorage):
+
     """ Class for persisting the list of threads which already died """
+
     def __init__(self, path):
         DataStorage.__init__(self, path, set())
+
 
 def _get_arg_parser():
     parser = ArgumentParser()
@@ -57,9 +61,11 @@ def _get_arg_parser():
                         help='list current threads')
     return parser
 
+
 def _parse_args():
     parser = _get_arg_parser()
     return parser.parse_args()
+
 
 def _norm_url(url):
     """ Normalize a url, adding missing http scheme if needed. """
@@ -69,13 +75,15 @@ def _norm_url(url):
         url = 'http://%s' % url
     return url
 
+
 class DataExtractor():
+
     """ This class stores (url, local_file) pairs for downloading later.
 
     It supports the use of namespaces to separate different filetypes.
 
-    For example url: http://example.com/this/is/a/image.jpg with namespace photos
-    would be paired with local path photos/image.jpg.
+    For example url: http://example.com/this/is/a/image.jpg with namespace
+    photos would be paired with local path photos/image.jpg.
     """
 
     def __init__(self):
@@ -91,6 +99,7 @@ class DataExtractor():
     @property
     def data(self):
         return self._data
+
 
 def _extract_downloads(soup):
     """ Extract downloads from a given parsed HTML thread. """
@@ -109,11 +118,12 @@ def _extract_downloads(soup):
             pass
 
     # Extract thumbs and images
-    for image in soup.findAll('a', {'class':'fileThumb'}):
+    for image in soup.findAll('a', {'class': 'fileThumb'}):
         image.img['src'] = extractor.extract(image.img['src'], "thumbs")
         image['href'] = extractor.extract(image['href'], "images")
 
     return extractor.data
+
 
 def _nice_size(size):
     UNITS = ['', 'K', 'M', 'G', 'T', 'P']
@@ -122,6 +132,7 @@ def _nice_size(size):
         size /= 1024.0
         index += 1
     return "%.2f %sb" % (size, UNITS[index])
+
 
 def _download(url, dest):
     """ Download the given url to the given destination.
@@ -161,18 +172,29 @@ def _download(url, dest):
                         en_time, en_size = progress_data[-1]
                         speed = (en_size - st_size) / (en_time - st_time)
                         eta = (total_length - dl) / speed
-                        eta_line = "ETA: %s, (%s/s)" % (datetime.timedelta(seconds=eta), _nice_size(speed))
+                        eta_line = ("ETA: %s, (%s/s)" % (
+                            datetime.timedelta(seconds=eta),
+                            _nice_size(speed)
+                        ))
                     else:
                         eta_line = ""
                     pct = 100. * dl / total_length
-                    sys.stdout.write("\r%s: %.3f%% of %s. %s" % (url, pct, _nice_size(total_length), eta_line))
+                    sys.stdout.write("\r%s: %.3f%% of %s. %s" % (
+                        url, pct, _nice_size(total_length),
+                        eta_line
+                    ))
                     sys.stdout.flush()
                     last_show = now
             total_time = time.time() - start_time
             total_speed = total_length / total_time
-            eta_line = "TOTAL TIME: %s, (%s/s)" % (datetime.timedelta(seconds=total_time), _nice_size(total_speed))
+            eta_line = ("TOTAL TIME: %s, (%s/s)" % (
+                datetime.timedelta(seconds=total_time),
+                _nice_size(total_speed)
+            ))
             pct = 100. * dl / total_length
-            print "\r%s: %.3f%% of %s. %s" % (url, pct, _nice_size(total_length), eta_line)
+            print ("\r%s: %.3f%% of %s. %s" % (
+                url, pct, _nice_size(total_length), eta_line
+            ))
             sys.stdout.flush()
 
         # Sync the temporal file buffer before copying
@@ -180,14 +202,16 @@ def _download(url, dest):
         os.fsync(fout)
         logging.info("Copying temp file to final destination")
         shutil.copy(fout.name, dest)
-        os.chmod(dest, 0664)  # Make file readable for apache (mode is 0600 by default)
+        os.chmod(dest, 0664)  # Make file readable for apache (default is 0600)
+
 
 def _embed(filename, alt=None):
     if filename.endswith(".webm"):
-        return '<video src="%s" controls></video>' % filename;
+        return '<video src="%s" controls></video>' % filename
     else:
         alt_text = 'alt="%s"' % alt if alt else ''
         return '<img src="%s" %s />' % (filename, alt_text)
+
 
 def _write_images_file(fname, images, line_break=False):
     with open(fname, 'w') as fout:
@@ -198,8 +222,10 @@ def _write_images_file(fname, images, line_break=False):
             else:
                 print >> fout
 
+
 def _original_file(thread):
     return os.path.join(thread.path, 'original')
+
 
 def update_original(thread):
     url = thread.url()
@@ -214,8 +240,10 @@ def update_original(thread):
         logging.info("%s: thread is alive. Saving original...", label)
         original = response.text
         with open(_original_file(thread), 'w') as fout:
-            fout.write(original.encode('ascii', 'xmlcharrefreplace'))  # Encoding for unicode characters
+            # Encoding for unicode characters
+            fout.write(original.encode('ascii', 'xmlcharrefreplace'))
     return response.status_code
+
 
 def update_thread_file(thread):
     label = os.path.basename(thread.path)
@@ -252,15 +280,20 @@ def download_thread(thread):
             if not os.path.isfile(fulldest):
                 to_download.append((url, fulldest))
                 namespaces[namespace] += 1
-    logging.info("%s downloads: %s were already downloaded, %s are missing (%s)", total_downloads, total_downloads - len(to_download), len(to_download), dict(namespaces))
+    logging.info("%s downloads: %s were already downloaded, %s are missing "
+                 "(%s)", total_downloads, total_downloads - len(to_download),
+                 len(to_download), dict(namespaces))
 
     for i, (url, outfile) in enumerate(to_download):
-        logging.info("%s: Downloads %s/%s: '%s'", label, i + 1, len(to_download), url)
+        logging.info("%s: Downloads %s/%s: '%s'", label, i + 1,
+                     len(to_download), url)
         _download(url, outfile)
+
 
 def main():
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    logging.getLogger('requests').setLevel(logging.WARN)  # Kill request info logging
+    # Kill request info logging
+    logging.getLogger('requests').setLevel(logging.WARN)
 
     if not os.path.isdir(THREADS_DIRECTORY):
         os.makedirs(THREADS_DIRECTORY)
@@ -278,26 +311,29 @@ def main():
             max_len = max(len(os.path.basename(t.path)) for t in threads)
             format_str = " - %%%ds - %%s" % (max_len)
             for thread in threads:
-                logging.info(format_str, os.path.basename(thread.path), thread.url())
+                logging.info(format_str, os.path.basename(thread.path),
+                             thread.url())
     else:
         with NotFound(os.path.join(NOT_FOUND_FILE)) as not_found:
             new_threads = []
             for token in options.thread:
-                logging.info("Initializing thread: '%s'" % token)
-                thread = FourChanThread(token)
+                logging.info("Initializing thread: '%s'", token)
+                thread = FourChanThread.from_token(token)
                 thread.init()
                 new_threads.append(thread)
 
-            threads_to_update = list(FourChanThread.all()) if options.update else new_threads
+            threads_to_update = (list(FourChanThread.all()) if options.update
+                                 else new_threads)
 
-            live_threads = [thread for thread in threads_to_update if not (thread.board, thread.thread_no) in not_found]
+            live_threads = [thread for thread in threads_to_update if
+                            (thread.board, thread.thread_no) not in not_found]
 
-            logging.info("I have %s/%s threads to update", len(live_threads), len(threads_to_update))
+            logging.info("I have %s/%s threads to update", len(live_threads),
+                         len(threads_to_update))
             for thread in live_threads:
                 if update_original(thread) == 404:
                     not_found.add((thread.board, thread.thread_no))
                 download_thread(thread)
-
 
 
 if __name__ == "__main__":
