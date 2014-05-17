@@ -13,11 +13,8 @@ class FourChanThread():
         self._thread_no = thread_no
         self._thread_id = "%s.%s" % (self._board, self._thread_no)
         self._path = os.path.join(THREADS_DIRECTORY, subdir or self._get_default_dir(slug))
-        self._inited = False
 
     def init(self):
-        if self._inited:
-            return
         if not os.path.isdir(self._path):
             logging.info("%s: Making directory '%s'", self._thread_id, self._path)
             os.makedirs(self._path)
@@ -35,7 +32,6 @@ class FourChanThread():
                     os.makedirs(source)
                 logging.info("Linking static dir: %s -> %s", source, static_dir)
                 os.symlink(source, static_dir)
-        self._inited = True
 
     @property
     def path(self):
