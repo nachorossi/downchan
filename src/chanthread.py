@@ -4,23 +4,28 @@ import os
 import re
 from common import THREADS_DIRECTORY, STATIC_DIRECTORY, STATIC_NAMESPACES
 
-RE_BOARD_THREAD_URL = "http://boards.4chan.org/(\w+)/res/(\d+)"
+RE_BOARD_THREAD_URL = r"http://boards.4chan.org/(\w+)/res/(\d+)"
+
 
 class FourChanThread():
     TOKEN_FNAME = '.downchan.thread.token'
+
     def __init__(self, board, thread_no, subdir=None, slug=None):
         self._board = board
         self._thread_no = thread_no
         self._thread_id = "%s.%s" % (self._board, self._thread_no)
-        self._path = os.path.join(THREADS_DIRECTORY, subdir or self._get_default_dir(slug))
+        self._path = os.path.join(THREADS_DIRECTORY,
+                                  subdir or self._get_default_dir(slug))
 
     def init(self):
         if not os.path.isdir(self._path):
-            logging.info("%s: Making directory '%s'", self._thread_id, self._path)
+            logging.info("%s: Making directory '%s'", self._thread_id,
+                         self._path)
             os.makedirs(self._path)
         thread_file = self._token_file(self._path)
         if not os.path.isfile(thread_file):
-            logging.info("%s: Writing thread_id file '%s'", self._thread_id, thread_file)
+            logging.info("%s: Writing thread_id file '%s'", self._thread_id,
+                         thread_file)
             with open(thread_file, 'w') as fout:
                 print >> fout, self._thread_id
         for namespace in STATIC_NAMESPACES:
@@ -28,9 +33,11 @@ class FourChanThread():
             if not os.path.exists(static_dir):
                 source = os.path.join(STATIC_DIRECTORY, namespace)
                 if not os.path.isdir(source):
-                    logging.info("Creating global static directory: '%s'", source)
+                    logging.info("Creating global static directory: '%s'",
+                                 source)
                     os.makedirs(source)
-                logging.info("Linking static dir: %s -> %s", source, static_dir)
+                logging.info("Linking static dir: %s -> %s", source,
+                             static_dir)
                 os.symlink(source, static_dir)
 
     @property
@@ -46,12 +53,13 @@ class FourChanThread():
         return self._thread_no
 
     def url(self):
-        return "http://boards.4chan.org/{0._board}/thread/{0._thread_no}".format(self)
+        return ("http://boards.4chan.org/{0.board}/thread/"
+                "{0.thread_no}".format(self))
 
     def _get_default_dir(self, slug):
-        thread_dir = "{}-{}".format(self._thread_no, slug) if slug else str(self._thread_no)
+        thread_dir = ("{}-{}".format(self._thread_no, slug) if slug
+                      else str(self._thread_no))
         return os.path.join(self._board, thread_dir)
-
 
     @classmethod
     def _token_file(cls, path):
