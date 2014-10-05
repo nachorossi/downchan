@@ -33,10 +33,10 @@ import time
 import sys
 from argparse import ArgumentParser
 from BeautifulSoup import BeautifulSoup
-from data import DataStorage
 
-from common import MAIN_DIRECTORY, THREADS_DIRECTORY
-from chanthread import FourChanThread
+from .data import DataStorage
+from .common import MAIN_DIRECTORY, THREADS_DIRECTORY
+from .chanthread import FourChanThread
 
 NOT_FOUND_FILE = os.path.join(MAIN_DIRECTORY, "404")
 
