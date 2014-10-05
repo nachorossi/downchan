@@ -1,3 +1,4 @@
+import interactive
 r'''
 Created on Mar 27, 2014
 
@@ -31,6 +32,8 @@ import shutil
 import tempfile
 import time
 import sys
+import subprocess
+
 from argparse import ArgumentParser
 from BeautifulSoup import BeautifulSoup
 from data import DataStorage
@@ -59,6 +62,9 @@ def _get_arg_parser():
     parser.add_argument("-l", '--list',
                         action="store_true", default=False,
                         help='list current threads')
+    parser.add_argument("-i", '--interactive',
+                        action="store_true", default=False,
+                        help='runs interactive mode')
     return parser
 
 
@@ -132,6 +138,36 @@ def _nice_size(size):
         size /= 1024.0
         index += 1
     return "%.2f %sb" % (size, UNITS[index])
+
+def _new_download(url, dest):
+    parent = os.path.dirname(dest)
+    if not os.path.isdir(parent):
+        os.makedirs(parent)
+
+    if os.path.isfile(dest):
+        logging.info("'%s' is already downloaded", dest)
+
+    response = requests.head(_norm_url(url))
+    total_length = response.headers.get('content-length')
+
+    with tempfile.NamedTemporaryFile("wb") as fout:
+        command = ['wget', '-O', fout.name, _norm_url(url)]
+        exit_code = subprocess.call(command)
+
+        if exit_code != 0:
+            logging.error("Wget download failed!")
+            return
+
+        file_size = os.path.getsize(fout.name)
+        if total_length is None:
+            logging.info("No size to check. Assuming good!")
+        else:
+            if file_size == int(total_length):
+                logging.info("Size matches. Copying to final destination")
+            else:
+                logging.error("Size did not match. got %s, expected %s", file_size,
+                              total_length)
+        shutil.copy(fout.name, dest)
 
 
 def _download(url, dest):
@@ -287,7 +323,7 @@ def download_thread(thread):
     for i, (url, outfile) in enumerate(to_download):
         logging.info("%s: Downloads %s/%s: '%s'", label, i + 1,
                      len(to_download), url)
-        _download(url, outfile)
+        _new_download(url, outfile)
 
 
 def main():
@@ -300,11 +336,14 @@ def main():
 
     options = _parse_args()
 
-    if not (options.thread or options.update or options.list):
+    if not (options.thread or options.update or options.list or
+            options.interactive):
         _get_arg_parser().print_help()
         sys.exit(1)
 
-    if options.list:
+    if options.interactive:
+        interactive.main()
+    elif options.list:
         logging.info("Current threads:")
         threads = FourChanThread.all()
         if threads:
